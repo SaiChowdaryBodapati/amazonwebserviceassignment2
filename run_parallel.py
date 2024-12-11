@@ -1,6 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
 import paramiko
-import boto3
 
 # List of slave node IPs
 slave_ips = [
@@ -16,37 +15,26 @@ slave_ips = [
 def run_command(slave_ip):
     user = "hadoop"  # SSH username
     remote_command = "python3 ~/amazonwebserviceassignment2/svm.py"  # Command to execute svm.py
-    s3_bucket_name = "svmparallel"  # Your S3 bucket name
-    s3_client = boto3.client('s3')
 
     try:
         # Establish an SSH connection to the slave
+        print(f"Connecting to {slave_ip}...")
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(hostname=slave_ip, username=user)  # No private key required for password-less SSH
+        client.connect(hostname=slave_ip, username=user)
 
         # Execute the remote command
-        print(f"Executing command on {slave_ip}...")
+        print(f"Executing SVM script on {slave_ip}...")
         stdin, stdout, stderr = client.exec_command(remote_command)
 
         # Wait for command to complete and fetch output
-        print(f"Output from {slave_ip}:\n{stdout.read().decode()}")
-        print(f"Error from {slave_ip}:\n{stderr.read().decode()}")
+        output = stdout.read().decode()
+        error = stderr.read().decode()
 
-        # SCP to fetch the results from the slave
-        print(f"Fetching results from {slave_ip}...")
-        sftp = client.open_sftp()
-        local_model_path = f"./{slave_ip}_svm_model.pkl"
-        local_results_path = f"./{slave_ip}_validation_results.txt"
-        sftp.get("/home/hadoop/svm_model.pkl", local_model_path)
-        sftp.get("/home/hadoop/validation_results.txt", local_results_path)
-        sftp.close()
-
-        # Upload the results to S3
-        print(f"Uploading results from {slave_ip} to S3...")
-        s3_client.upload_file(local_model_path, s3_bucket_name, f"{slave_ip}/svm_model.pkl")
-        s3_client.upload_file(local_results_path, s3_bucket_name, f"{slave_ip}/validation_results.txt")
-        print(f"Results from {slave_ip} successfully uploaded to S3.")
+        if output:
+            print(f"Output from {slave_ip}:\n{output}")
+        if error:
+            print(f"Error from {slave_ip}:\n{error}")
 
         client.close()
     except Exception as e:
@@ -54,5 +42,7 @@ def run_command(slave_ip):
 
 # Run the commands in parallel across all slave nodes
 if __name__ == "__main__":
+    print("Starting parallel execution of SVM scripts...")
     with ThreadPoolExecutor(max_workers=len(slave_ips)) as executor:
         executor.map(run_command, slave_ips)
+    print("Parallel execution completed.")
