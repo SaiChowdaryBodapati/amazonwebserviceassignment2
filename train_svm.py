@@ -1,66 +1,51 @@
-from pyspark.sql import SparkSession
-from pyspark.ml.feature import VectorAssembler
-from pyspark.ml.classification import LinearSVC
-from pyspark.ml.evaluation import MulticlassClassificationEvaluator
-from pyspark.sql.functions import col
-
-# Initialize Spark session
-print("Initializing Spark session...")
-spark = SparkSession.builder.appName("SVMClassifier").getOrCreate()
+import pandas as pd
+import requests
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, classification_report
 
 # Define GitHub raw dataset URL
-github_url = "https://raw.githubusercontent.com/SaiChowdaryBodapati/amazonwebservicesassignment2/main/TrainingDataset.csv"
+github_url = "https://raw.githubusercontent.com/<your-username>/<your-repo>/<branch>/TrainingDataset.csv"
 
 # Load data from GitHub
 print("Loading training dataset from GitHub...")
-data = spark.read.csv(github_url, header=True, inferSchema=True)
-print("Data loaded successfully. Schema:")
-data.printSchema()
-
-# Debug: Show a sample of the data
-print("Sample data:")
-data.show(5)
+response = requests.get(github_url)
+data = pd.read_csv(pd.compat.StringIO(response.text))
+print("Data loaded successfully. Sample data:")
+print(data.head())
 
 # Ensure all features are numeric
 print("Casting all feature columns to numeric...")
-for column in data.columns:
-    if column != "quality":  # Assuming 'quality' is the label column
-        data = data.withColumn(column, col(column).cast("float"))
-print("Casting completed. Updated schema:")
-data.printSchema()
+data = data.apply(pd.to_numeric, errors='coerce')
+data = data.dropna()
+print("Casting completed. Updated data sample:")
+print(data.head())
 
 # Feature engineering
 print("Preparing features for model training...")
-feature_columns = [col for col in data.columns if col != "quality"]
-assembler = VectorAssembler(inputCols=feature_columns, outputCol="features")
-data = assembler.transform(data).select("features", "quality")
-print("Feature engineering completed. Sample transformed data:")
-data.show(5)
+X = data.drop(columns=['quality'])  # Assuming 'quality' is the label column
+y = data['quality']
 
 # Train-test split
 print("Splitting data into train and test sets...")
-train_data, test_data = data.randomSplit([0.8, 0.2], seed=1234)
-print(f"Data split completed. Training data count: {train_data.count()}, Test data count: {test_data.count()}")
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1234)
+print(f"Data split completed. Training data size: {len(X_train)}, Test data size: {len(X_test)}")
 
 # Train SVM model
 print("Training the SVM model...")
-svm = LinearSVC(featuresCol="features", labelCol="quality", maxIter=10, regParam=0.1)
-svm_model = svm.fit(train_data)
+svm = SVC(kernel='linear', C=1.0)
+svm.fit(X_train, y_train)
 print("Model training completed.")
 
 # Test the model
 print("Generating predictions on the test set...")
-predictions = svm_model.transform(test_data)
+y_pred = svm.predict(X_test)
 print("Predictions generated. Sample predictions:")
-predictions.select("features", "quality", "prediction").show(5)
+print(y_pred[:5])
 
 # Evaluate performance
 print("Evaluating model performance...")
-evaluator = MulticlassClassificationEvaluator(labelCol="quality", predictionCol="prediction", metricName="accuracy")
-accuracy = evaluator.evaluate(predictions)
+accuracy = accuracy_score(y_test, y_pred)
 print(f"Model Accuracy: {accuracy:.2f}")
-
-# Stop Spark session
-print("Stopping Spark session...")
-spark.stop()
-print("Spark session stopped.")
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
