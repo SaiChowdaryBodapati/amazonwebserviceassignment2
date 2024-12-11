@@ -6,7 +6,8 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report
 
 # Define GitHub raw dataset URL
-github_url = "https://raw.githubusercontent.com/<your-username>/<your-repo>/<branch>/TrainingDataset.csv"
+github_url = "https://raw.githubusercontent.com/SaiChowdaryBodapati/amazonwebserviceassignment2/main/TrainingDataset.csv"
+
 
 # Load data from GitHub
 print("Loading training dataset from GitHub...")
