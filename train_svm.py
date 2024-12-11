@@ -1,5 +1,6 @@
 import pandas as pd
 import requests
+from io import StringIO
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report
@@ -10,7 +11,7 @@ github_url = "https://raw.githubusercontent.com/<your-username>/<your-repo>/<bra
 # Load data from GitHub
 print("Loading training dataset from GitHub...")
 response = requests.get(github_url)
-data = pd.read_csv(pd.compat.StringIO(response.text))
+data = pd.read_csv(StringIO(response.text), sep=';')
 print("Data loaded successfully. Sample data:")
 print(data.head())
 
