@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import accuracy_score, classification_report
 from multiprocessing import Pool, cpu_count
+import os
+import time
 
 # S3 bucket and model details
 bucket_name = "svmclassifier"  # Your S3 bucket name
@@ -46,9 +48,12 @@ y_val = val_data['quality'].values
 
 # Function to make predictions on a chunk of data
 def predict_chunk(indices):
+    print(f"Worker {os.getpid()} processing indices: {indices}")
+    start = time.time()
     chunk_X = X_val[indices]
     chunk_y = y_val[indices]
     predictions = model.predict(chunk_X)
+    print(f"Worker {os.getpid()} finished in {time.time() - start:.2f} seconds")
     return predictions, chunk_y
 
 # Step 5: Split the data for parallel processing
@@ -57,8 +62,12 @@ indices = np.array_split(np.arange(len(X_val)), num_workers)
 
 # Step 6: Parallel processing
 print("Making predictions in parallel...")
+start_time = time.time()
 with Pool(num_workers) as pool:
     results = pool.map(predict_chunk, indices)
+end_time = time.time()
+
+print(f"Parallel processing time: {end_time - start_time:.2f} seconds")
 
 # Combine predictions and true labels
 all_predictions = np.concatenate([result[0] for result in results])
