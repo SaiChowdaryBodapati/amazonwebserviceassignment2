@@ -1,31 +1,32 @@
 from pyspark.sql import SparkSession
-from pyspark.ml.feature import VectorAssembler
-from pyspark.ml.classification import LinearSVC
-from pyspark.ml.classification import OneVsRest
-from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 
 # Initialize Spark session
-spark = SparkSession.builder.appName("SVMClassifier").getOrCreate()
+spark = SparkSession.builder \
+    .appName("SVMClassifier") \
+    .getOrCreate()
 
-# Load the dataset from S3
-s3_path = "s3a://svmparallel/TrainingDataset.csv"
-data = spark.read.csv(s3_path, header=True, inferSchema=True)
+# GitHub raw URLs for datasets
+train_url = "https://raw.githubusercontent.com/SaiChowdaryBodapati/amazonwebserviceassignment2/main/TrainingDataset.csv"
+val_url = "https://raw.githubusercontent.com/SaiChowdaryBodapati/amazonwebserviceassignment2/main/ValidationDataset.csv"
 
-# Prepare features and labels
-feature_columns = data.columns[:-1]  # Exclude 'quality' column
-assembler = VectorAssembler(inputCols=feature_columns, outputCol="features")
-data = assembler.transform(data)
+# Load datasets directly from GitHub
+print("Loading training dataset...")
+train_data = spark.read.csv(train_url, header=True, inferSchema=True)
 
-# Split data into training and validation sets
-train, val = data.randomSplit([0.8, 0.2], seed=42)
+print("Loading validation dataset...")
+val_data = spark.read.csv(val_url, header=True, inferSchema=True)
 
-# Define and train the SVM model
-svm = LinearSVC(maxIter=100, regParam=0.1, labelCol="quality", featuresCol="features")
-ovr = OneVsRest(classifier=svm)  # One-vs-Rest for multi-class classification
-ovr_model = ovr.fit(train)
+# Verify data loading
+print("Training dataset schema:")
+train_data.printSchema()
 
-# Evaluate the model on validation data
-predictions = ovr_model.transform(val)
-evaluator = MulticlassClassificationEvaluator(labelCol="quality", predictionCol="prediction", metricName="f1")
-f1_score = evaluator.evaluate(predictions)
-print(f"Validation F1 Score: {f1_score}")
+print("Validation dataset schema:")
+val_data.printSchema()
+
+# TODO: Add your ML training and validation logic here
+# Example: Print row counts for verification
+print(f"Training data row count: {train_data.count()}")
+print(f"Validation data row count: {val_data.count()}")
+
+# Stop Spark session
+spark.stop()
