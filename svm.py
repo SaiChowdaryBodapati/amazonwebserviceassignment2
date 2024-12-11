@@ -4,11 +4,13 @@ from sklearn.metrics import accuracy_score, classification_report
 from sklearn.model_selection import GridSearchCV
 import pickle
 import boto3
+import os
 
 # Load the datasets
 train_url = "https://raw.githubusercontent.com/SaiChowdaryBodapati/amazonwebserviceassignment2/main/TrainingDataset.csv"
 val_url = "https://raw.githubusercontent.com/SaiChowdaryBodapati/amazonwebserviceassignment2/main/ValidationDataset.csv"
 
+print("Loading datasets...")
 train_data = pd.read_csv(train_url, sep=';')
 val_data = pd.read_csv(val_url, sep=';')
 
@@ -27,6 +29,7 @@ param_grid = {
 
 svm_model = SVC()
 
+print("Setting up Grid Search...")
 grid_search = GridSearchCV(
     estimator=svm_model,
     param_grid=param_grid,
@@ -44,6 +47,7 @@ best_model = grid_search.best_estimator_
 print(f"Best Parameters: {grid_search.best_params_}")
 
 # Train the best model on the full training data
+print("Training the best model on the full training data...")
 best_model.fit(X_train, y_train)
 
 # Save the trained model to a file
@@ -54,7 +58,7 @@ print(f"Model saved locally as '{model_file}'.")
 
 # Upload the model to S3
 s3 = boto3.client('s3')
-bucket_name = "svmclassifier"  # Your S3 bucket name
+bucket_name = "svmparallel"  # Your S3 bucket name
 try:
     s3.upload_file(model_file, bucket_name, model_file)
     print(f"Model uploaded to S3 bucket '{bucket_name}' as '{model_file}'.")
@@ -62,6 +66,7 @@ except Exception as e:
     print(f"Failed to upload model to S3: {e}")
 
 # Validate the model
+print("Validating the model...")
 y_val_pred = best_model.predict(X_val)
 
 # Calculate accuracy and display classification report
@@ -69,3 +74,18 @@ val_accuracy = accuracy_score(y_val, y_val_pred)
 print(f"\nValidation Accuracy: {val_accuracy * 100:.2f}%")
 print("\nValidation Classification Report:")
 print(classification_report(y_val, y_val_pred))
+
+# Save validation results to a file
+results_file = "validation_results.txt"
+with open(results_file, "w") as file:
+    file.write(f"Validation Accuracy: {val_accuracy * 100:.2f}%\n")
+    file.write("\nValidation Classification Report:\n")
+    file.write(classification_report(y_val, y_val_pred))
+print(f"Validation results saved locally as '{results_file}'.")
+
+# Upload validation results to S3
+try:
+    s3.upload_file(results_file, bucket_name, results_file)
+    print(f"Validation results uploaded to S3 bucket '{bucket_name}' as '{results_file}'.")
+except Exception as e:
+    print(f"Failed to upload validation results to S3: {e}")
