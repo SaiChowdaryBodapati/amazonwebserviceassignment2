@@ -40,30 +40,31 @@ except Exception as e:
     print(f"Failed to load the validation dataset: {e}")
     exit(1)
 
-# Step 4: Split the validation data for parallel processing
-X_val = val_data.drop(columns=['quality'])
-y_val = val_data['quality']
+# Step 4: Prepare the validation data
+X_val = val_data.drop(columns=['quality']).values
+y_val = val_data['quality'].values
 
 # Function to make predictions on a chunk of data
-def predict_chunk(chunk):
-    chunk_X, chunk_y = chunk
+def predict_chunk(indices):
+    chunk_X = X_val[indices]
+    chunk_y = y_val[indices]
     predictions = model.predict(chunk_X)
     return predictions, chunk_y
 
-# Split the data into chunks
+# Step 5: Split the data for parallel processing
 num_workers = cpu_count()  # Number of available CPUs
-chunks = np.array_split(list(zip(X_val.values, y_val.values)), num_workers)
+indices = np.array_split(np.arange(len(X_val)), num_workers)
 
-# Step 5: Parallel processing
+# Step 6: Parallel processing
 print("Making predictions in parallel...")
 with Pool(num_workers) as pool:
-    results = pool.map(predict_chunk, chunks)
+    results = pool.map(predict_chunk, indices)
 
 # Combine predictions and true labels
 all_predictions = np.concatenate([result[0] for result in results])
 all_labels = np.concatenate([result[1] for result in results])
 
-# Step 6: Evaluate performance
+# Step 7: Evaluate performance
 print("\nEvaluating performance...")
 accuracy = accuracy_score(all_labels, all_predictions)
 print(f"\nValidation Accuracy: {accuracy * 100:.2f}%")
