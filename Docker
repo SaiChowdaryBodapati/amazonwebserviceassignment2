@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . /app
 
 # Install necessary Python packages
-RUN pip install --no-cache-dir boto3 pandas scikit-learn
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Command to run the application
-CMD ["python", "train_svm.py"]
+CMD ["python", "docker_app.py"]
