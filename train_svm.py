@@ -8,12 +8,12 @@ from pyspark.sql.functions import col
 print("Initializing Spark session...")
 spark = SparkSession.builder.appName("SVMClassifier").getOrCreate()
 
-# Define S3 bucket details
-s3_bucket = "s3a://svmparallel/TrainingDataset.csv"
+# Define GitHub raw dataset URL
+github_url = "https://raw.githubusercontent.com/SaiChowdaryBodapati/amazonwebservicesassignment2/main/TrainingDataset.csv"
 
-# Load data from S3
-print("Loading training dataset from S3...")
-data = spark.read.csv(s3_bucket, header=True, inferSchema=True)
+# Load data from GitHub
+print("Loading training dataset from GitHub...")
+data = spark.read.csv(github_url, header=True, inferSchema=True)
 print("Data loaded successfully. Schema:")
 data.printSchema()
 
